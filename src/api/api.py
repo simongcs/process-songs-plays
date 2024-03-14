@@ -7,6 +7,7 @@ from src.tasker.tasker import Tasker, TaskStatus
 
 
 app = Flask(__name__)
+app.config["UPLOAD_FOLDER"] = "./data"
 
 # Dictionary to store the processing status and output file path for each task
 tasker = Tasker()
@@ -18,7 +19,8 @@ def process_file():
         file = request.files["file"]
         task_id = tasker.get_next_task_id()
 
-        input_file_path = os.path.join("data", file.filename)
+        input_file_path = os.path.join(app.config["UPLOAD_FOLDER"],
+                                       file.filename)
 
         output_file_path = os.path.join(
             "data", file.filename.replace(".csv", f"_processed_{task_id}.csv")

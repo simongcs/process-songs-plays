@@ -1,13 +1,14 @@
 import os
-import io
+import tempfile
+from unittest.mock import MagicMock
 import pytest
-
-# from flask import Flask
-
-# from your_module import app, tasker, CsvParser, TaskStatus
-# Import your Flask app and other necessary components
 from src.api.api import app
+from src.csv_parser.parser import CsvParser
 from src.tasker.tasker import Tasker, TaskStatus
+
+
+INPUT_FILE_PATH = "test/sample.csv"
+OUTPUT_FILE_PATH = "./output"
 
 
 @pytest.fixture
@@ -17,24 +18,50 @@ def client():
         yield client
 
 
+@pytest.fixture(scope="class")
+def mock_tasker():
+    tasker = Tasker()
+    yield tasker
+    Tasker.reset_instance()
+
+
 class TestProcessFile:
-    def test_process_file_with_file(self, client):
-        # Create a sample CSV file to upload
-        sample_file_content = "column1,column2\nvalue1,value2"
-        sample_file = (io.BytesIO(sample_file_content.encode()), "test.csv")
 
-        # Send a POST request with the file
-        data = {"file": sample_file}
-        response = client.post(
-            "/process", content_type="multipart/form-data", data=data
-        )
+    @pytest.fixture
+    def mock_csv_parser(self, mock_tasker):
+        parser = CsvParser(INPUT_FILE_PATH, OUTPUT_FILE_PATH, mock_tasker)
+        parser.process_csv = MagicMock()
+        return parser
 
-        # Check the response
-        assert response.status_code == 200
-        assert "task_id" in response.json
+    def test_process_file(self, client):
+        # Create a temporary directory to simulate the 'data' folder
+        with tempfile.TemporaryDirectory() as tmpdir:
+            app.config["UPLOAD_FOLDER"] = tmpdir
 
-        # Perform any necessary cleanup
-        os.remove(os.path.join("data", "test.csv"))
+            # Prepare a sample file to upload
+            sample_file_content = b"Sample content"
+            sample_file = tempfile.NamedTemporaryFile(delete=False)
+            sample_file.write(sample_file_content)
+            sample_file.seek(0)
+
+            # Send a POST request with the file
+            response = client.post(
+                "/process",
+                content_type="multipart/form-data",
+                data={"file": (sample_file, "sample.csv")},
+            )
+
+            # Check the response
+            assert response.status_code == 200
+            assert "task_id" in response.json
+
+            # Check if the file was saved correctly
+            saved_file_path = os.path.join(tmpdir, "sample.csv")
+            assert os.path.exists(saved_file_path)
+
+            # Cleanup
+            sample_file.close()
+            os.unlink(sample_file.name)
 
     def test_process_file_without_file(self, client):
         # Send a POST request without a file
@@ -45,12 +72,7 @@ class TestProcessFile:
         assert response.json == {"error": "No file provided"}
 
 
-class TestGestResult:
-    @pytest.fixture(scope="class")
-    def mock_tasker(self):
-        tasker = Tasker()
-        yield tasker
-        Tasker.reset_instance()
+class TestGetResult:
 
     def test_get_result_processing(self, client, mock_tasker):
         # Set up a mock task in the processing state
