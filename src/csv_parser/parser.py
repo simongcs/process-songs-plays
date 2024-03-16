@@ -15,7 +15,6 @@ class CsvParser:
         return pd.read_csv(self.input_file_path, chunksize=chunk_size)
 
     def process_chunks(self, chunks) -> pd.DataFrame:
-        # Initialize an empty DataFrame to store the aggregated results
         result_df = pd.DataFrame()
 
         # Process each chunk
