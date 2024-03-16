@@ -1,5 +1,4 @@
-from celery.result import AsyncResult
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import pytest
 from src.api.api import celery
 from celery.contrib.testing.worker import start_worker

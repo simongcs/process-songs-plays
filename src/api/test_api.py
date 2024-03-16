@@ -1,10 +1,9 @@
 import os
 import tempfile
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 import pytest
 
 from src.api.api import app
-from src.csv_parser.parser import CsvParser
 
 INPUT_FILE_PATH = "test/sample.csv"
 OUTPUT_FILE_PATH = "./output"
@@ -12,7 +11,6 @@ OUTPUT_FILE_PATH = "./output"
 
 @pytest.fixture
 def client():
-    # app = create_app()
     app.config["TESTING"] = True
     with app.test_client() as client:
         yield client
@@ -25,7 +23,6 @@ class TestProcessFile:
             "/health",
         )
 
-        # Check the response
         assert response.status_code == 200
 
     def test_process_file(self, client):

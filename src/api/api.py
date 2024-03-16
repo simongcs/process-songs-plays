@@ -14,18 +14,14 @@ app.config["CELERY_CONFIG"] = {
     "broker_url": os.getenv("BROKER_URL"),
     "result_backend": os.getenv("RESULT_BACKEND"),
 }
-# main_blueprint = Blueprint('main_blueprint', __name__)
 
 celery_config = {
     "broker_url": "redis://localhost:6379/0",
     "result_backend": "redis://localhost:6379/0",
 }
 
-
-# app = create_app(celery_config)
 celery = celery_init_app(app)
 celery.set_default()
-# celery = app.celery
 
 
 @app.route("/process", methods=["POST"])
