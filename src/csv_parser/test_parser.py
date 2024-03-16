@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pandas as pd
 from src.csv_parser.parser import CsvParser
-from src.tasker.tasker import Tasker, TaskStatus
 
 INPUT_FILE_PATH = "test/sample.csv"
 OUTPUT_FILE_PATH = "./output"
@@ -11,34 +10,26 @@ CHUNK_SIZE = 1024
 
 
 class TestParser:
-    @pytest.fixture(scope="function")
-    def mock_tasker(self):
-        tasker = Tasker()
-        tasker.change_task_status = MagicMock()
-        yield tasker
-        Tasker.reset_instance()
 
     @pytest.fixture
-    def mock_csv_parser(self, mock_tasker):
-        parser = CsvParser(INPUT_FILE_PATH, OUTPUT_FILE_PATH, mock_tasker)
+    def mock_csv_parser(self):
+        parser = CsvParser(INPUT_FILE_PATH, OUTPUT_FILE_PATH)
         return parser
 
     @pytest.fixture
-    def mock_csv_parser_all_methods(self, mock_tasker):
-        parser = CsvParser(INPUT_FILE_PATH, OUTPUT_FILE_PATH, mock_tasker)
+    def mock_csv_parser_all_methods(self):
+        parser = CsvParser(INPUT_FILE_PATH, OUTPUT_FILE_PATH)
         parser.get_csv_chunks = MagicMock()
         parser.process_chunks = MagicMock()
         parser.save_csv = MagicMock()
         parser.change_task_status = MagicMock()
         return parser
 
-    def test_process_csv(self, mock_csv_parser_all_methods, mock_tasker):
-        mock_csv_parser_all_methods.process_csv(TASK_ID)
+    def test_process_csv(self, mock_csv_parser_all_methods):
+        mock_csv_parser_all_methods.process_csv()
         mock_csv_parser_all_methods.get_csv_chunks.assert_called_once_with(
             CHUNK_SIZE
         )
-        mock_tasker.change_task_status.assert_called_once_with(
-            TASK_ID, TaskStatus.COMPLETED)
 
     def test_get_csv_chunks(self, mock_csv_parser):
         chunks = mock_csv_parser.get_csv_chunks(CHUNK_SIZE)
