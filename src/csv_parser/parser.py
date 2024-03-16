@@ -1,19 +1,15 @@
 import pandas as pd
-from src.tasker.tasker import Tasker, TaskStatus
 
 
 class CsvParser:
-    def __init__(self, input_file_path: str, output_file_path: str,
-                 tasker: Tasker) -> None:
+    def __init__(self, input_file_path: str, output_file_path: str) -> None:
         self.input_file_path = input_file_path
         self.output_file_path = output_file_path
-        self.tasker = tasker
 
-    def process_csv(self, task_id, chunk_size: int = 1024) -> None:
+    def process_csv(self, chunk_size: int = 1024) -> None:
         chunks = self.get_csv_chunks(chunk_size)
         csv_processed_df = self.process_chunks(chunks)
         self.save_csv(csv_processed_df)
-        self.tasker.change_task_status(task_id, TaskStatus.COMPLETED)
 
     def get_csv_chunks(self, chunk_size: int):
         return pd.read_csv(self.input_file_path, chunksize=chunk_size)

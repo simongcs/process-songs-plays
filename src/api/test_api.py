@@ -1,11 +1,10 @@
 import os
 import tempfile
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
+
 from src.api.api import app
 from src.csv_parser.parser import CsvParser
-from src.tasker.tasker import Tasker, TaskStatus
-
 
 INPUT_FILE_PATH = "test/sample.csv"
 OUTPUT_FILE_PATH = "./output"
@@ -13,25 +12,21 @@ OUTPUT_FILE_PATH = "./output"
 
 @pytest.fixture
 def client():
+    # app = create_app()
     app.config["TESTING"] = True
     with app.test_client() as client:
         yield client
 
 
-@pytest.fixture(scope="class")
-def mock_tasker():
-    tasker = Tasker()
-    yield tasker
-    Tasker.reset_instance()
-
-
 class TestProcessFile:
 
-    @pytest.fixture
-    def mock_csv_parser(self, mock_tasker):
-        parser = CsvParser(INPUT_FILE_PATH, OUTPUT_FILE_PATH, mock_tasker)
-        parser.process_csv = MagicMock()
-        return parser
+    def test_health(self, client):
+        response = client.get(
+            "/health",
+        )
+
+        # Check the response
+        assert response.status_code == 200
 
     def test_process_file(self, client):
         # Create a temporary directory to simulate the 'data' folder
@@ -74,63 +69,48 @@ class TestProcessFile:
 
 class TestGetResult:
 
-    def test_get_result_processing(self, client, mock_tasker):
-        # Set up a mock task in the processing state
-        task_id = "test_task"
-        mock_tasker.set_new_task(
-            {
-                "status": TaskStatus.PROCESSING,
-                "task_id": task_id,
-                "output_file_path": "path/to/nonexistent/file.csv",
-            }
-        )
-
-        response = client.get(f"/result/{task_id}")
-        assert response.status_code == 200
-        assert response.json == {"status": "processing"}
-
-    def test_get_result_completed(self, client, mock_tasker, tmp_path):
-        # Set up a mock task in the completed state with a valid file
-        task_id = "test_task_completed"
-        filename = "test_output.csv"
-        output_file_path = f"test/{filename}"
-
-        mock_tasker.set_new_task(
-            {
-                "status": TaskStatus.COMPLETED,
-                "task_id": task_id,
-                "output_file_path": output_file_path,
-            }
-        )
-        with open(output_file_path, 'w'):
-            response = client.get(f"/result/{task_id}")
+    def test_get_result_pending(self, client):
+        with patch("src.api.api.celery.AsyncResult") as mock_result:
+            mock_result.return_value.state = "PENDING"
+            response = client.get("/result/fake_id")
             assert response.status_code == 200
-            assert (
-                response.headers["Content-Disposition"]
-                == f"attachment; filename={filename}"
+            assert response.json == {"status": "processing"}
+
+    def test_get_result_success(self, client):
+        with patch("src.api.api.celery.AsyncResult") as mock_result:
+            basepath = os.path.abspath(os.curdir)
+            with tempfile.NamedTemporaryFile(
+                    dir=basepath, delete=False) as tmp_file:
+                mock_result.return_value.state = "SUCCESS"
+                type(mock_result.return_value).result = PropertyMock(
+                    return_value={
+                        "output_path": os.path.relpath(tmp_file.name, basepath)
+                    }
+                )
+                response = client.get("result/fake_id")
+                assert response.status_code == 200
+                assert (
+                    response.headers["Content-Disposition"]
+                    ==
+                    f"attachment; filename={os.path.basename(tmp_file.name)}"
+                )
+
+    def test_get_result_success_file_not_found(self, client):
+        with patch("src.api.api.celery.AsyncResult") as mock_result:
+
+            mock_result.return_value.state = "SUCCESS"
+            type(mock_result.return_value).result = PropertyMock(
+                return_value={"output_path": "nonexistent_file.txt"}
             )
-
-        # Perform any necessary cleanup
-        os.remove(output_file_path)
-
-    def test_get_result_completed_file_not_found(self, client, mock_tasker):
-        # Set up a mock task in the completed state with a missing file
-        task_id = "test_task_missing_file"
-        mock_tasker.set_new_task(
-            {
-                "status": TaskStatus.COMPLETED,
-                "task_id": task_id,
-                "output_file_path": "path/to/nonexistent/file.csv",
-            }
-        )
-
-        response = client.get(f"/result/{task_id}")
-        assert response.status_code == 200
-        assert response.json == {"status": "completed",
-                                 "error": "File not found"}
+            response = client.get("/result/fake_id")
+            assert response.status_code == 200
+            assert response.json == {
+                "status": "completed", "error": "File not found"
+                }
 
     def test_get_result_invalid_task_id(self, client):
-        # Test with an invalid task ID
-        response = client.get("/result/invalid_task_id")
-        assert response.status_code == 404
-        assert response.json == {"error": "Invalid task ID"}
+        with patch("src.api.api.celery.AsyncResult") as mock_result:
+            mock_result.return_value.state = 'FAILURE'
+            response = client.get('/result/fake_id')
+            assert response.status_code == 404
+            assert response.json == {'error': 'Invalid task ID'}
