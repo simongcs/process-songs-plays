@@ -6,9 +6,23 @@ services:
       - "8080:8080"
     volumes:
       - .:/app
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=redis://redis:6379/0
     command: python main.py
     depends_on:
       - redis
+  celery:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - BROKER_URL=redis://redis:6379/0
+      - RESULT_BACKEND=redis://redis:6379/0
+    command: celery -A src.api.api.celery worker
+    depends_on:
+      - redis
+      - app
   redis:
     image: "redis:alpine3.19"
     ports:
