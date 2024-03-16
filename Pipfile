@@ -7,12 +7,15 @@ name = "pypi"
 pandas = "*"
 flask = "*"
 celery = "*"
+redis = "*"
 
 [dev-packages]
 black = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-flask = "*"
+python-dotenv = "*"
+pytest-env = "*"
 
 [requires]
 python_version = "3.11"
