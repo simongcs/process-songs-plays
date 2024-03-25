@@ -8,6 +8,7 @@ pandas = "*"
 flask = "*"
 celery = "*"
 redis = "*"
+dask = {extras = ["dataframe"], version = "*"}
 
 [dev-packages]
 black = "*"
