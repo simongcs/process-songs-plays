@@ -56,9 +56,3 @@ def get_result(task_id: str):
             return {"status": "completed", "error": "File not found"}
     else:
         return {"error": "Invalid task ID"}, 404
-
-
-@app.route("/health", methods=["GET"])
-def health_check():
-    return {"status": "ok", "brok": os.getenv("BROKER_URL"),
-            "back": os.getenv("RESULT_BACKEND")}

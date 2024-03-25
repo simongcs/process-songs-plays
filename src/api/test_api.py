@@ -18,13 +18,6 @@ def client():
 
 class TestProcessFile:
 
-    def test_health(self, client):
-        response = client.get(
-            "/health",
-        )
-
-        assert response.status_code == 200
-
     def test_process_file(self, client):
         # Create a temporary directory to simulate the 'data' folder
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -77,7 +70,8 @@ class TestGetResult:
         with patch("src.api.api.celery.AsyncResult") as mock_result:
             basepath = os.path.abspath(os.curdir)
             with tempfile.NamedTemporaryFile(
-                    dir=basepath, delete=False) as tmp_file:
+                        dir=basepath, delete=False
+                    ) as tmp_file:
                 mock_result.return_value.state = "SUCCESS"
                 type(mock_result.return_value).result = PropertyMock(
                     return_value={
@@ -88,8 +82,8 @@ class TestGetResult:
                 assert response.status_code == 200
                 assert (
                     response.headers["Content-Disposition"]
-                    ==
-                    f"attachment; filename={os.path.basename(tmp_file.name)}"
+                    == "attachment; filename={}"
+                    .format(os.path.basename(tmp_file.name))
                 )
 
     def test_get_result_success_file_not_found(self, client):
@@ -107,7 +101,7 @@ class TestGetResult:
 
     def test_get_result_invalid_task_id(self, client):
         with patch("src.api.api.celery.AsyncResult") as mock_result:
-            mock_result.return_value.state = 'FAILURE'
-            response = client.get('/result/fake_id')
+            mock_result.return_value.state = "FAILURE"
+            response = client.get("/result/fake_id")
             assert response.status_code == 404
-            assert response.json == {'error': 'Invalid task ID'}
+            assert response.json == {"error": "Invalid task ID"}

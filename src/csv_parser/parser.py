@@ -1,39 +1,28 @@
-import pandas as pd
+import dask.dataframe as dd
 
 
 class CsvParser:
-    def __init__(self, input_file_path: str, output_file_path: str) -> None:
+    def __init__(self, input_file_path: str, output_path: str) -> None:
         self.input_file_path = input_file_path
-        self.output_file_path = output_file_path
+        self.output_path = output_path
 
-    def process_csv(self, chunk_size: int = 1024) -> None:
-        chunks = self.get_csv_chunks(chunk_size)
-        csv_processed_df = self.process_chunks(chunks)
+    @classmethod
+    def chunk_size_in_mb(cls, chunk_size: int):
+        return chunk_size * 1024 * 1024
+
+    def process_csv(self, chunk_size: int = 100) -> None:
+        chunk_size_mb = self.chunk_size_in_mb(chunk_size)
+        df_chunks = self.read_csv_chunks(chunk_size_mb)
+        csv_processed_df = self.process_chunks(df_chunks)
         self.save_csv(csv_processed_df)
 
-    def get_csv_chunks(self, chunk_size: int):
-        return pd.read_csv(self.input_file_path, chunksize=chunk_size)
+    def read_csv_chunks(self, chunk_size: int) -> dd.DataFrame:
+        return dd.read_csv(self.input_file_path, blocksize=chunk_size)
 
-    def process_chunks(self, chunks) -> pd.DataFrame:
-        result_df = pd.DataFrame()
+    def process_chunks(self, df_chunks: dd.DataFrame) -> dd.DataFrame:
+        return df_chunks.groupby(
+            ["song", "date"]
+            )["Number of Plays"].sum().reset_index()
 
-        # Process each chunk
-        for chunk in chunks:
-            # Group by 'song' and 'date' and sum the 'Number of Plays'
-            aggregated = (
-                chunk.groupby(["song", "date"])["Number of Plays"]
-                .sum().reset_index()
-            )
-            # Append the aggregated results to the result DataFrame
-            result_df = pd.concat([result_df, aggregated])
-
-        # Group by 'song' and 'date' again in case there were overlaps
-        # between chunks
-        return (
-            result_df.groupby(["song", "date"])["Number of Plays"]
-            .sum().reset_index()
-        )
-
-    def save_csv(self, df: pd.DataFrame) -> None:
-        # Write the result to the output CSV file
-        df.to_csv(self.output_file_path, index=False)
+    def save_csv(self, df: dd.DataFrame) -> None:
+        df.to_csv(filename=self.output_path, index=False, single_file=True)
