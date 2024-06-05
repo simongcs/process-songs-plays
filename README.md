@@ -1,6 +1,6 @@
 # Process songs plays
 
-This an REST API where you can upload a csv file with columns ["song", "date", "number of plays" ] to summarize the total number of plays by date and get resulting csv ["song", "date", "total number of plays" ]
+This is an API REST where you can upload a csv file with columns ["song", "date", "number of plays" ] to summarize the total number of plays by date and get a resulting csv ["song", "date", "total number of plays" ]
 
 
 
